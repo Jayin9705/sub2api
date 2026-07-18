@@ -1,0 +1,135 @@
+name: Build Fast Image
+
+on:
+  push:
+    branches:
+      - fast-image
+    paths:
+      - '.github/workflows/fast-image.yml'
+      - 'Dockerfile'
+      - 'backend/**'
+      - 'frontend/**'
+      - 'docs/legal/**'
+      - 'deploy/docker-entrypoint.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: fast-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          check-latest: false
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Test Fast request forwarding
+        working-directory: backend
+        run: >-
+          go test ./internal/service
+          -run 'Test(ApplyOpenAIFastPolicyToBody_AccountFastMode|WSResponseCreate_AccountFastMode|OpenAIGatewayService_Forward_AccountFastMode)'
+          -count=1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Test Fast account toggle
+        working-directory: frontend
+        run: pnpm exec vitest run src/components/account/__tests__/EditAccountModal.spec.ts
+
+      - name: Set image metadata
+        id: image
+        shell: bash
+        run: |
+          echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-fast" >> "$GITHUB_OUTPUT"
+          echo "version=$(tr -d '\r\n' < backend/cmd/server/VERSION)-fast.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=fast
+            type=raw,value=fast-${{ github.run_number }}
+            type=sha,prefix=fast-sha-,format=short
+          labels: |
+            org.opencontainers.image.title=Sub2API Fast
+            org.opencontainers.image.description=Sub2API with account-level OpenAI priority service tier support
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Build and push Fast image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.image.outputs.version }}
+            COMMIT=${{ github.sha }}
+            DATE=${{ steps.image.outputs.date }}
+          cache-from: type=gha,scope=sub2api-fast-amd64
+          cache-to: type=gha,mode=max,scope=sub2api-fast-amd64
+
+      - name: Write deployment summary
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          {
+            echo "## Fast image published"
+            echo
+            echo "- Image: \`${IMAGE}:fast\`"
+            echo "- Immutable tag: \`${IMAGE}:fast-${GITHUB_RUN_NUMBER}\`"
+            echo "- Digest: \`${DIGEST}\`"
+            echo
+            echo '```bash'
+            echo "SUB2API_FAST_IMAGE=${IMAGE}:fast"
+            echo 'docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.fast.yml pull sub2api'
+            echo 'docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.fast.yml up -d --no-deps sub2api'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

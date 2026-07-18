@@ -1650,6 +1650,12 @@ func (a *Account) IsOpenAIPassthroughEnabled() bool {
 	return false
 }
 
+// IsOpenAIFastModeEnabled reports whether requests routed to this OpenAI
+// account should use OpenAI's official priority service tier.
+func (a *Account) IsOpenAIFastModeEnabled() bool {
+	return a != nil && a.IsOpenAI() && a.getExtraBool("openai_fast_mode")
+}
+
 // IsOpenAIResponsesWebSocketV2Enabled 返回 OpenAI 账号是否开启 Responses WebSocket v2。
 //
 // 分类型新字段：

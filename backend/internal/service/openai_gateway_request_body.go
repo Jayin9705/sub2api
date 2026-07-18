@@ -695,6 +695,13 @@ func normalizeOpenAIServiceTier(raw string) *string {
 	}
 }
 
+func effectiveOpenAIServiceTier(account *Account, raw string) string {
+	if account != nil && account.IsOpenAIFastModeEnabled() {
+		return OpenAIFastTierPriority
+	}
+	return normalizedOpenAIServiceTierValue(raw)
+}
+
 // OpenAIFastBlockedError indicates a request was rejected by the OpenAI fast
 // policy (action=block). Mirrors BetaBlockedError on the Claude side.
 type OpenAIFastBlockedError struct {
@@ -851,10 +858,7 @@ func (s *OpenAIGatewayService) applyOpenAIFastPolicyToBody(ctx context.Context, 
 		return body, nil
 	}
 	rawTier := gjson.GetBytes(body, "service_tier").String()
-	if rawTier == "" {
-		return body, nil
-	}
-	normTier := normalizedOpenAIServiceTierValue(rawTier)
+	normTier := effectiveOpenAIServiceTier(account, rawTier)
 	if normTier == "" {
 		return body, nil
 	}
@@ -879,7 +883,7 @@ func (s *OpenAIGatewayService) applyOpenAIFastPolicyToBody(ctx context.Context, 
 		}
 		return updated, nil
 	default:
-		// pass：把别名（如 "fast"）写回为规范值（"priority"）。
+		// pass：把别名（如 "fast"）或账号级 fast 覆盖写回为官方值。
 		if normTier == rawTier {
 			return body, nil
 		}
@@ -962,10 +966,7 @@ func (s *OpenAIGatewayService) applyOpenAIFastPolicyToWSResponseCreate(
 		return frame, nil, nil
 	}
 	rawTier := gjson.GetBytes(frame, "service_tier").String()
-	if rawTier == "" {
-		return frame, nil, nil
-	}
-	normTier := normalizedOpenAIServiceTierValue(rawTier)
+	normTier := effectiveOpenAIServiceTier(account, rawTier)
 	if normTier == "" {
 		return frame, nil, nil
 	}

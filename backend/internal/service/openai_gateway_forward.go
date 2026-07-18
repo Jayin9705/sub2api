@@ -443,28 +443,29 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 	}
 
-	if rawTier := requestView.ServiceTier; rawTier != "" {
-		if normTier := normalizedOpenAIServiceTierValue(rawTier); normTier != "" {
-			action, errMsg := s.evaluateOpenAIFastPolicy(ctx, account, upstreamModel, normTier)
-			switch action {
-			case BetaPolicyActionBlock:
-				msg := errMsg
-				if msg == "" {
-					msg = fmt.Sprintf("openai service_tier=%s is not allowed for model %s", normTier, upstreamModel)
-				}
-				blocked := &OpenAIFastBlockedError{Message: msg}
-				writeOpenAIFastPolicyBlockedResponse(c, blocked)
-				return nil, blocked
-			case BetaPolicyActionFilter:
+	rawTier := requestView.ServiceTier
+	if normTier := effectiveOpenAIServiceTier(account, rawTier); normTier != "" {
+		action, errMsg := s.evaluateOpenAIFastPolicy(ctx, account, upstreamModel, normTier)
+		switch action {
+		case BetaPolicyActionBlock:
+			msg := errMsg
+			if msg == "" {
+				msg = fmt.Sprintf("openai service_tier=%s is not allowed for model %s", normTier, upstreamModel)
+			}
+			blocked := &OpenAIFastBlockedError{Message: msg}
+			writeOpenAIFastPolicyBlockedResponse(c, blocked)
+			return nil, blocked
+		case BetaPolicyActionFilter:
+			if rawTier != "" {
 				markPatchDelete("service_tier")
-			case OpenAIFastPolicyActionForcePriority:
-				if rawTier != OpenAIFastTierPriority {
-					markPatchSet("service_tier", OpenAIFastTierPriority)
-				}
-			default:
-				if normTier != rawTier {
-					markPatchSet("service_tier", normTier)
-				}
+			}
+		case OpenAIFastPolicyActionForcePriority:
+			if rawTier != OpenAIFastTierPriority {
+				markPatchSet("service_tier", OpenAIFastTierPriority)
+			}
+		default:
+			if normTier != rawTier {
+				markPatchSet("service_tier", normTier)
 			}
 		}
 	}

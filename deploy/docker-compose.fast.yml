@@ -1,0 +1,4 @@
+services:
+  sub2api:
+    image: ${SUB2API_FAST_IMAGE:?Set SUB2API_FAST_IMAGE to the GHCR Fast image}
+    pull_policy: always

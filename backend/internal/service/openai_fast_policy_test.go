@@ -196,6 +196,43 @@ func TestApplyOpenAIFastPolicyToBody_DefaultPassesPriorityAndFast(t *testing.T) 
 	require.Equal(t, string(body), string(updated))
 }
 
+func TestApplyOpenAIFastPolicyToBody_AccountFastModeForcesPriority(t *testing.T) {
+	svc := newOpenAIGatewayServiceWithSettings(t, DefaultOpenAIFastPolicySettings())
+	account := &Account{
+		Platform: PlatformOpenAI,
+		Type:     AccountTypeOAuth,
+		Extra:    map[string]any{"openai_fast_mode": true},
+	}
+
+	for _, body := range [][]byte{
+		[]byte(`{"model":"gpt-5.5","input":"hi"}`),
+		[]byte(`{"model":"gpt-5.5","service_tier":"flex","input":"hi"}`),
+		[]byte(`{"model":"gpt-5.5","service_tier":"default","input":"hi"}`),
+	} {
+		updated, err := svc.applyOpenAIFastPolicyToBody(context.Background(), account, "gpt-5.5", body)
+		require.NoError(t, err)
+		require.Equal(t, OpenAIFastTierPriority, gjson.GetBytes(updated, "service_tier").String())
+	}
+}
+
+func TestApplyOpenAIFastPolicyToBody_AccountFastModeStillHonorsFilterPolicy(t *testing.T) {
+	svc := newOpenAIGatewayServiceWithSettings(t, openAIFastFilterPriorityPolicy())
+	account := &Account{
+		Platform: PlatformOpenAI,
+		Type:     AccountTypeOAuth,
+		Extra:    map[string]any{"openai_fast_mode": true},
+	}
+
+	updated, err := svc.applyOpenAIFastPolicyToBody(
+		context.Background(),
+		account,
+		"gpt-5.5",
+		[]byte(`{"model":"gpt-5.5","input":"hi"}`),
+	)
+	require.NoError(t, err)
+	require.False(t, gjson.GetBytes(updated, "service_tier").Exists())
+}
+
 func TestApplyOpenAIFastPolicyToBody_ExplicitFilterRemovesField(t *testing.T) {
 	svc := newOpenAIGatewayServiceWithSettings(t, openAIFastFilterPriorityPolicy())
 	account := &Account{Platform: PlatformOpenAI, Type: AccountTypeAPIKey}

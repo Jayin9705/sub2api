@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.7
 # =============================================================================
 # Sub2API Multi-Stage Dockerfile
 # =============================================================================
@@ -20,6 +19,7 @@ ARG NPM_CONFIG_REGISTRY=
 # -----------------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS frontend-builder
 ARG NPM_CONFIG_REGISTRY
+ENV NODE_OPTIONS=--max-old-space-size=1400
 
 WORKDIR /app/frontend
 
@@ -118,8 +118,8 @@ COPY --from=pg-client /usr/local/bin/psql /usr/local/bin/psql
 COPY --from=pg-client /usr/local/lib/libpq.so.5* /usr/local/lib/
 
 # Create non-root user
-RUN addgroup -g 1000 sub2api && \
-    adduser -u 1000 -G sub2api -s /bin/sh -D sub2api
+RUN grep -q '^sub2api:' /etc/group || addgroup -g 1000 sub2api; \
+    id -u sub2api >/dev/null 2>&1 || adduser -u 1000 -G sub2api -s /bin/sh -D sub2api
 
 # Set working directory
 WORKDIR /app
