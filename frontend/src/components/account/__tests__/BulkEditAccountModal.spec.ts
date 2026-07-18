@@ -237,6 +237,44 @@ describe('BulkEditAccountModal', () => {
     })
   })
 
+  it('OpenAI 账号批量编辑可开启 Official Fast mode', async () => {
+    const wrapper = mountModal({
+      selectedPlatforms: ['openai'],
+      selectedTypes: ['oauth']
+    })
+
+    await wrapper.get('#bulk-edit-openai-fast-mode-enabled').setValue(true)
+    await wrapper.get('#bulk-edit-openai-fast-mode-toggle').trigger('click')
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledTimes(1)
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], {
+      extra: {
+        openai_fast_mode: true
+      }
+    })
+  })
+
+  it('OpenAI 账号批量编辑可关闭 Official Fast mode', async () => {
+    const wrapper = mountModal({
+      selectedPlatforms: ['openai'],
+      selectedTypes: ['apikey']
+    })
+
+    await wrapper.get('#bulk-edit-openai-fast-mode-enabled').setValue(true)
+    expect(wrapper.get('#bulk-edit-openai-fast-mode-toggle').attributes('aria-checked')).toBe('false')
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledTimes(1)
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], {
+      extra: {
+        openai_fast_mode: false
+      }
+    })
+  })
+
   it('OpenAI OAuth 批量编辑应提交 OAuth 专属 WS mode 字段（含 http_bridge）', async () => {
     const wrapper = mountModal({
       selectedPlatforms: ['openai'],
