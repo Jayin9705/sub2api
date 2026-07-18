@@ -7,7 +7,7 @@ it does not need the Go, Node.js, or pnpm toolchains.
 ## 1. Publish the branch
 
 Push the custom code and `.github/workflows/fast-image.yml` to a branch named
-`fast-image` in your GitHub fork. Every relevant push to that branch runs the
+`fast-image-v0160` in your GitHub fork. Every relevant push to that branch runs the
 `Build Fast Image` workflow. You can also rerun it manually from GitHub Actions.
 
 The workflow publishes these tags:
@@ -34,7 +34,8 @@ Do not store the token in this repository or in `deploy/.env`.
 
 ## 3. Pull and run
 
-Add the image produced by the successful workflow to `deploy/.env`:
+The Compose override defaults to this repository's Fast image. To use a pinned
+rollback tag or a different registry, set the image in `deploy/.env`:
 
 ```dotenv
 SUB2API_FAST_IMAGE=ghcr.io/OWNER/sub2api-fast:fast

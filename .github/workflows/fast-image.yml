@@ -3,7 +3,7 @@ name: Build Fast Image
 on:
   push:
     branches:
-      - fast-image
+      - fast-image-v0160
     paths:
       - '.github/workflows/fast-image.yml'
       - 'Dockerfile'
@@ -16,6 +16,9 @@ on:
 permissions:
   contents: read
   packages: write
+
+env:
+  BASE_VERSION: '0.1.160'
 
 concurrency:
   group: fast-image-${{ github.ref }}
@@ -70,7 +73,7 @@ jobs:
         shell: bash
         run: |
           echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-fast" >> "$GITHUB_OUTPUT"
-          echo "version=$(tr -d '\r\n' < backend/cmd/server/VERSION)-fast.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "version=${BASE_VERSION}-fast.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
