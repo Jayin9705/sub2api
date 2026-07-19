@@ -170,7 +170,7 @@ func TestOpenAIGatewayService_Forward_AccountFastModeInjectsPriorityTier(t *test
 		},
 		Extra: map[string]any{
 			"use_responses_api": true,
-			"openai_fast_mode": true,
+			"openai_fast_mode":   true,
 		},
 	}
 	rec := httptest.NewRecorder()
