@@ -3,7 +3,7 @@ name: Build Fast Image
 on:
   push:
     branches:
-      - fast-image-v0160
+      - fast-image-v0161
     paths:
       - '.github/workflows/fast-image.yml'
       - 'Dockerfile'
@@ -18,7 +18,7 @@ permissions:
   packages: write
 
 env:
-  BASE_VERSION: '0.1.160'
+  BASE_VERSION: '0.1.161'
 
 concurrency:
   group: fast-image-${{ github.ref }}
@@ -70,6 +70,7 @@ jobs:
           pnpm exec vitest run
           src/components/account/__tests__/EditAccountModal.spec.ts
           src/components/account/__tests__/BulkEditAccountModal.spec.ts
+          src/views/admin/__tests__/AccountsView.fastMode.spec.ts
 
       - name: Set image metadata
         id: image

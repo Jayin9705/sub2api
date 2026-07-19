@@ -7,7 +7,7 @@ it does not need the Go, Node.js, or pnpm toolchains.
 ## 1. Publish the branch
 
 Push the custom code and `.github/workflows/fast-image.yml` to a branch named
-`fast-image-v0160` in your GitHub fork. Every relevant push to that branch runs the
+`fast-image-v0161` in your GitHub fork. Every relevant push to that branch runs the
 `Build Fast Image` workflow. You can also rerun it manually from GitHub Actions.
 
 The workflow publishes these tags:
