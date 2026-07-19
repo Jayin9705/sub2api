@@ -96,6 +96,9 @@ export default {
       schedulableEnabled: 'Scheduling enabled',
       schedulableDisabled: 'Scheduling disabled',
       failedToToggleSchedulable: 'Failed to toggle scheduling status',
+      openaiFastModeEnabled: 'Official Fast mode enabled',
+      openaiFastModeDisabled: 'Official Fast mode disabled',
+      failedToToggleOpenAIFastMode: 'Failed to toggle Official Fast mode',
       groupCountTotal: '{count} groups total',
       platforms: {
         anthropic: 'Anthropic',
@@ -157,6 +160,7 @@ export default {
         schedulerScore: 'Scheduler Score',
         status: 'Status',
         schedulable: 'Schedulable',
+        openaiFastMode: 'Official Fast',
         todayStats: 'Today Stats',
         groups: 'Groups',
         usageWindows: 'Usage Windows',

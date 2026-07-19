@@ -324,6 +324,31 @@
               <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="[row.schedulable ? 'translate-x-4' : 'translate-x-0']" />
             </button>
           </template>
+          <template #cell-openai_fast_mode="{ row }">
+            <button
+              v-if="row.platform === 'openai'"
+              type="button"
+              role="switch"
+              :aria-checked="isOpenAIFastModeEnabled(row)"
+              :aria-label="isOpenAIFastModeEnabled(row) ? t('admin.accounts.openaiFastModeEnabled') : t('admin.accounts.openaiFastModeDisabled')"
+              :data-test="`openai-fast-mode-${row.id}`"
+              :disabled="togglingOpenAIFastMode.has(row.id)"
+              :title="isOpenAIFastModeEnabled(row) ? t('admin.accounts.openaiFastModeEnabled') : t('admin.accounts.openaiFastModeDisabled')"
+              class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-dark-800"
+              :class="[
+                isOpenAIFastModeEnabled(row)
+                  ? 'bg-primary-500 hover:bg-primary-600'
+                  : 'bg-gray-200 hover:bg-gray-300 dark:bg-dark-600 dark:hover:bg-dark-500'
+              ]"
+              @click="handleToggleOpenAIFastMode(row)"
+            >
+              <span
+                class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                :class="[isOpenAIFastModeEnabled(row) ? 'translate-x-4' : 'translate-x-0']"
+              />
+            </button>
+            <span v-else class="text-sm text-gray-400 dark:text-dark-500">-</span>
+          </template>
           <template #cell-today_stats="{ row }">
             <AccountTodayStatsCell
               :stats="todayStatsByAccountId[String(row.id)] ?? null"
@@ -617,6 +642,7 @@ const showSchedulePanel = ref(false)
 const scheduleAcc = ref<Account | null>(null)
 const scheduleModelOptions = ref<SelectOption[]>([])
 const togglingSchedulable = ref<number | null>(null)
+const togglingOpenAIFastMode = reactive(new Set<number>())
 const menu = reactive<{show:boolean, acc:Account|null, pos:{top:number, left:number}|null}>({ show: false, acc: null, pos: null })
 const exportingData = ref(false)
 const upstreamBillingProbeSettings = reactive<UpstreamBillingProbeSettings>({
@@ -1076,6 +1102,7 @@ const shouldReplaceAutoRefreshRow = (current: Account, next: Account) => {
     current.current_window_cost !== next.current_window_cost ||
     current.active_sessions !== next.active_sessions ||
     current.schedulable !== next.schedulable ||
+    current.extra?.openai_fast_mode !== next.extra?.openai_fast_mode ||
     current.status !== next.status ||
     current.rate_limit_reset_at !== next.rate_limit_reset_at ||
     current.overload_until !== next.overload_until ||
@@ -1386,6 +1413,7 @@ const allColumns = computed(() => {
     { key: 'capacity', label: t('admin.accounts.columns.capacity'), sortable: false },
     { key: 'status', label: t('admin.accounts.columns.status'), sortable: true },
     { key: 'schedulable', label: t('admin.accounts.columns.schedulable'), sortable: true },
+    { key: 'openai_fast_mode', label: t('admin.accounts.columns.openaiFastMode'), sortable: false },
     { key: 'today_stats', label: t('admin.accounts.columns.todayStats'), sortable: false }
   ]
   if (!authStore.isSimpleMode) {
@@ -2009,6 +2037,33 @@ const handleToggleSchedulable = async (a: Account) => {
     appStore.showError(t('admin.accounts.failedToToggleSchedulable'))
   } finally {
     togglingSchedulable.value = null
+  }
+}
+const isOpenAIFastModeEnabled = (account: Account) =>
+  account.platform === 'openai' && account.extra?.openai_fast_mode === true
+
+const handleToggleOpenAIFastMode = async (account: Account) => {
+  if (account.platform !== 'openai' || togglingOpenAIFastMode.has(account.id)) return
+
+  const enabled = !isOpenAIFastModeEnabled(account)
+  togglingOpenAIFastMode.add(account.id)
+  try {
+    const result = await adminAPI.accounts.bulkUpdate([account.id], {
+      extra: { openai_fast_mode: enabled }
+    })
+    const succeeded = result.results?.some(item => item.account_id === account.id && item.success)
+    if (!succeeded) throw new Error('OpenAI Fast mode update failed')
+
+    patchAccountInList({
+      ...account,
+      extra: { ...(account.extra ?? {}), openai_fast_mode: enabled }
+    })
+    enterAutoRefreshSilentWindow()
+  } catch (error) {
+    console.error('Failed to toggle OpenAI Fast mode:', error)
+    appStore.showError(t('admin.accounts.failedToToggleOpenAIFastMode'))
+  } finally {
+    togglingOpenAIFastMode.delete(account.id)
   }
 }
 const handleShowTempUnsched = (a: Account) => { tempUnschedAcc.value = a; showTempUnsched.value = true }

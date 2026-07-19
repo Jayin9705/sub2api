@@ -97,6 +97,9 @@ export default {
       schedulableEnabled: '调度已开启',
       schedulableDisabled: '调度已关闭',
       failedToToggleSchedulable: '切换调度状态失败',
+      openaiFastModeEnabled: '官方 Fast 模式已开启',
+      openaiFastModeDisabled: '官方 Fast 模式已关闭',
+      failedToToggleOpenAIFastMode: '切换官方 Fast 模式失败',
       groupCountTotal: '共 {count} 个分组',
       columns: {
         name: '名称',
@@ -113,6 +116,7 @@ export default {
         schedulerScore: '调度权值',
         status: '状态',
         schedulable: '调度',
+        openaiFastMode: '官方 Fast',
         todayStats: '今日统计',
         groups: '分组',
         usageWindows: '用量窗口',
